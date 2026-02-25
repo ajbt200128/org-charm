@@ -9,7 +9,10 @@
       "Bash(devenv shell:*)",
       "Bash(ls:*)",
       "WebFetch(domain:orgmode.org)",
-      "Bash(go get:*)"
+      "Bash(go get:*)",
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nAdd SSH org-mode file viewer with Charm.sh ecosystem\n\n- Implement SSH server using wish with bubbletea middleware\n- Parse org files with go-org library for full syntax support\n- Render with lipgloss styling \\(Tokyo Night palette\\)\n- Add chroma syntax highlighting for code blocks\n- Support headings, lists, tables, quotes, links, timestamps\n- Include file browser and document viewer with vim-style navigation\n- Add CLAUDE.md development guide\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(git commit:*)"
     ]
   }
 }

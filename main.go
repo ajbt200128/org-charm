@@ -20,6 +20,7 @@ import (
 	"github.com/charmbracelet/wish/activeterm"
 	"github.com/charmbracelet/wish/bubbletea"
 	"github.com/charmbracelet/wish/logging"
+	"github.com/muesli/termenv"
 )
 
 func main() {
@@ -58,8 +59,8 @@ func main() {
 		wish.WithAddress(net.JoinHostPort(*host, *port)),
 		wish.WithHostKeyPath(*keyPath),
 		wish.WithMiddleware(
-			// Bubbletea middleware - serves the TUI to each SSH session
-			bubbletea.Middleware(teaHandler),
+			// Bubbletea middleware with forced TrueColor - serves the TUI to each SSH session
+			bubbletea.MiddlewareWithColorProfile(teaHandler, termenv.TrueColor),
 			// Require an active terminal
 			activeterm.Middleware(),
 			// Logging middleware using charm's log
@@ -105,8 +106,9 @@ func main() {
 // makeTeaHandler creates a bubbletea handler function for wish
 func makeTeaHandler(files []string) bubbletea.Handler {
 	return func(sess ssh.Session) (tea.Model, []tea.ProgramOption) {
-		// Get the renderer for this SSH session
+		// Get the renderer for this SSH session and force TrueColor
 		renderer := bubbletea.MakeRenderer(sess)
+		renderer.SetColorProfile(termenv.TrueColor)
 
 		// Get PTY info for window size
 		pty, _, _ := sess.Pty()
