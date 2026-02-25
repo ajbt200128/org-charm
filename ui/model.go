@@ -33,6 +33,9 @@ type Model struct {
 	orgFiles      []*org.OrgFile
 	selectedIndex int
 
+	// Index file for main page (optional)
+	indexFile *org.OrgFile
+
 	// Current view
 	currentView View
 
@@ -62,10 +65,14 @@ func NewModel(renderer *lipgloss.Renderer, files []string) Model {
 		showHelp:      false,
 	}
 
-	// Parse all org files
+	// Parse all org files, separating index.org
 	for _, f := range files {
 		if orgFile, err := org.ParseFile(f); err == nil {
-			m.orgFiles = append(m.orgFiles, orgFile)
+			if strings.HasSuffix(strings.ToLower(f), "index.org") {
+				m.indexFile = orgFile
+			} else {
+				m.orgFiles = append(m.orgFiles, orgFile)
+			}
 		}
 	}
 
@@ -182,6 +189,29 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 				m.viewport.GotoTop()
 			}
+
+		case "n", "tab":
+			// Next document
+			if m.currentView == ViewDocument && len(m.orgFiles) > 1 {
+				m.selectedIndex = (m.selectedIndex + 1) % len(m.orgFiles)
+				m.currentDoc = m.orgFiles[m.selectedIndex]
+				m.rawView = false
+				m.viewport.SetContent(m.renderDocument(m.currentDoc))
+				m.viewport.GotoTop()
+			}
+
+		case "p", "shift+tab":
+			// Previous document
+			if m.currentView == ViewDocument && len(m.orgFiles) > 1 {
+				m.selectedIndex--
+				if m.selectedIndex < 0 {
+					m.selectedIndex = len(m.orgFiles) - 1
+				}
+				m.currentDoc = m.orgFiles[m.selectedIndex]
+				m.rawView = false
+				m.viewport.SetContent(m.renderDocument(m.currentDoc))
+				m.viewport.GotoTop()
+			}
 		}
 	}
 
@@ -219,11 +249,30 @@ func (m Model) View() string {
 func (m Model) renderFileList() string {
 	var b strings.Builder
 
-	// Header
-	headerText := "  📚 Org Files"
-	header := m.styles.Header.Width(m.width - 4).Render(headerText)
-	b.WriteString(header)
-	b.WriteString("\n\n")
+	// If we have an index.org, render it as the main page header
+	if m.indexFile != nil {
+		renderer := NewRenderer(m.styles, m.width-8)
+
+		// Render index title if present
+		if title := m.indexFile.Title(); title != "" {
+			b.WriteString(m.styles.DocTitle.Width(m.width - 8).Render(title))
+			b.WriteString("\n\n")
+		}
+
+		// Render index content
+		b.WriteString(renderer.RenderNodes(m.indexFile.Document.Nodes))
+		b.WriteString("\n")
+
+		// Section header for file list
+		b.WriteString(m.styles.Heading2.Render("★★ Documents"))
+		b.WriteString("\n\n")
+	} else {
+		// Default header
+		headerText := "  📚 Org Files"
+		header := m.styles.Header.Width(m.width - 4).Render(headerText)
+		b.WriteString(header)
+		b.WriteString("\n\n")
+	}
 
 	// File list
 	if len(m.orgFiles) == 0 {
@@ -324,9 +373,9 @@ func (m Model) renderDocumentView() string {
 	}
 	help := m.renderHelpBar([]helpItem{
 		{"↑/↓", "scroll"},
+		{"n/p", "next/prev"},
 		{"r", rawToggle},
 		{"esc", "back"},
-		{"?", "help"},
 		{"q", "quit"},
 	})
 
@@ -337,8 +386,39 @@ func (m Model) renderDocumentView() string {
 }
 
 func (m Model) renderDocument(doc *org.OrgFile) string {
+	var b strings.Builder
 	renderer := NewRenderer(m.styles, m.width-8)
-	return renderer.RenderNodes(doc.Document.Nodes)
+
+	// Render document metadata header
+	title := doc.Title()
+	author := doc.Author()
+	date := doc.Date()
+
+	if title != "" || author != "" || date != "" {
+		// Title
+		if title != "" {
+			b.WriteString(m.styles.DocTitle.Width(m.width - 12).Render(title))
+			b.WriteString("\n")
+		}
+
+		// Author and date line
+		var meta []string
+		if author != "" {
+			meta = append(meta, m.styles.DocAuthor.Render("by "+author))
+		}
+		if date != "" {
+			meta = append(meta, m.styles.DocDate.Render(date))
+		}
+		if len(meta) > 0 {
+			b.WriteString(strings.Join(meta, m.styles.HelpText.Render(" • ")))
+			b.WriteString("\n")
+		}
+		b.WriteString("\n")
+	}
+
+	// Render document content
+	b.WriteString(renderer.RenderNodes(doc.Document.Nodes))
+	return b.String()
 }
 
 type helpItem struct {
@@ -382,6 +462,8 @@ func (m Model) renderHelp() string {
 			items: []helpItem{
 				{"Page Up / Ctrl+u", "Scroll up"},
 				{"Page Down / Ctrl+d", "Scroll down"},
+				{"n / Tab", "Next document"},
+				{"p / Shift+Tab", "Previous document"},
 				{"r", "Toggle raw/rendered view"},
 				{"Esc", "Return to file list"},
 			},
