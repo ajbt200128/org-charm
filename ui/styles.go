@@ -341,32 +341,32 @@ func NewStyles(r *lipgloss.Renderer) *Styles {
 		Foreground(colorFg)
 
 	// ═══════════════════════════════════════════════════════════════════
-	// Inline Formatting
+	// Inline Formatting - distinct colors for visibility
 	// ═══════════════════════════════════════════════════════════════════
 
 	s.Bold = r.NewStyle().
 		Bold(true).
-		Foreground(colorFg)
+		Foreground(lipgloss.Color("#ffffff")) // White for bold
 
 	s.Italic = r.NewStyle().
 		Italic(true).
-		Foreground(colorFg)
+		Foreground(colorCyan) // Cyan for italic
 
 	s.Underline = r.NewStyle().
 		Underline(true).
-		Foreground(colorFg)
+		Foreground(colorYellow) // Yellow for underline
 
 	s.Strikethrough = r.NewStyle().
 		Strikethrough(true).
 		Foreground(colorSubtle)
 
 	s.Verbatim = r.NewStyle().
-		Foreground(colorGreen)
+		Foreground(colorGreen).
+		Background(lipgloss.Color("#1f2335"))
 
 	s.InlineCode = r.NewStyle().
 		Background(lipgloss.Color("#24283b")).
-		Foreground(colorOrange).
-		Padding(0, 1)
+		Foreground(colorOrange)
 
 	s.Link = r.NewStyle().
 		Foreground(colorBlue).
