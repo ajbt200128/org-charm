@@ -98,7 +98,7 @@ jobs:
         with:
           context: .
           platforms: ${{ matrix.platform }}
-          target: builder
+          target: binary
           outputs: type=local,dest=./output
           cache-from: type=gha
           build-args: |
@@ -107,7 +107,7 @@ jobs:
 
       - name: Rename and upload binary
         run: |
-          mv ./output/app/org-charm ./org-charm-${{ matrix.os }}-${{ matrix.arch }}
+          mv ./output/org-charm ./org-charm-${{ matrix.os }}-${{ matrix.arch }}
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
@@ -130,7 +130,7 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: .
-          target: builder
+          target: binary
           outputs: type=local,dest=./output
           cache-from: type=gha
           cache-to: type=gha,mode=max
@@ -140,7 +140,7 @@ jobs:
 
       - name: Rename binary
         run: |
-          mv ./output/app/org-charm ./org-charm-darwin-arm64
+          mv ./output/org-charm ./org-charm-darwin-arm64
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4

@@ -18,7 +18,8 @@
       "Bash(ssh:*)",
       "Bash(/usr/bin/ssh:*)",
       "Bash(pkill:*)",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "WebFetch(domain:docs.docker.com)"
     ]
   }
 }

@@ -38,6 +38,10 @@ COPY . .
 # Build binary
 RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -ldflags='-w -s' -o org-charm .
 
+# Export stage - minimal stage for extracting just the binary
+FROM scratch AS binary
+COPY --from=builder /app/org-charm /org-charm
+
 # Runtime stage
 FROM alpine:3.19 AS runtime
 
