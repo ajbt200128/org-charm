@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "WebSearch",
+      "Bash(direnv reload:*)",
+      "Bash(go mod init:*)",
+      "Bash(devenv shell:*)",
+      "Bash(ls:*)",
+      "WebFetch(domain:orgmode.org)",
+      "Bash(go get:*)"
+    ]
+  }
+}

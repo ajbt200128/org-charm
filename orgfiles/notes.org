@@ -1,0 +1,66 @@
+#+TITLE: Sample Notes
+#+DATE: 2024
+
+* Project Ideas
+
+** Org-Charm Enhancements
+
+- [ ] Add syntax highlighting for code blocks
+- [ ] Support for org-mode TODO states
+- [ ] Add search functionality
+- [X] Basic file browser
+- [X] Document viewer with scrolling
+
+** Future Features
+
+*** Inline Formatting
+
+Support for inline markup:
+- *bold text*
+- /italic text/
+- =verbatim=
+- ~code~
+- +strikethrough+
+
+*** Links
+
+Support for [[https://charm.sh][Charm.sh]] style links.
+
+* Meeting Notes
+
+** 2024-01-15 Planning Session
+
+Discussed the architecture for the org file viewer:
+
+#+BEGIN_SRC text
+┌─────────────────────────────────────┐
+│           SSH Connection            │
+├─────────────────────────────────────┤
+│         Wish SSH Server             │
+├─────────────────────────────────────┤
+│       Bubbletea Middleware          │
+├─────────────────────────────────────┤
+│            TUI Model                │
+│  ┌───────────┐  ┌───────────────┐   │
+│  │ File List │  │ Document View │   │
+│  └───────────┘  └───────────────┘   │
+└─────────────────────────────────────┘
+#+END_SRC
+
+** Action Items
+
+1. Set up basic SSH server with wish
+2. Create org parser
+3. Design lipgloss styles
+4. Implement file browser
+5. Add document rendering
+
+* Resources
+
+- Charm.sh Documentation: https://charm.sh
+- Org Mode Manual: https://orgmode.org/manual/
+- Go Documentation: https://golang.org/doc/
+
+-----
+
+/Last updated: 2024/

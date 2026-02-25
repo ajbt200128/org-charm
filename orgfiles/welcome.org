@@ -1,0 +1,171 @@
+#+TITLE: Welcome to Org-Charm
+#+AUTHOR: Org-Charm Team
+#+DATE: 2024-02-25
+
+* Introduction
+
+Welcome to *Org-Charm*, a beautiful SSH-based viewer for your Emacs Org mode
+files! This project brings the power of the [[https://charm.sh][Charm.sh]] ecosystem to your
+org files.
+
+** Key Features
+
+- 📁 *File Browser* - Navigate through your org files with ease
+- 📄 *Beautiful Rendering* - Syntax highlighting and styled output
+- ⌨️ *Vim-style Navigation* - Use ~j/k~ or arrow keys
+- 🎨 *Lipgloss Styling* - Modern terminal aesthetics
+
+* TODO Getting Started                                              :setup:
+
+** DONE Install Dependencies
+CLOSED: [2024-02-25 Sun 10:00]
+
+Run the following to get started:
+
+#+BEGIN_SRC bash
+# Clone the repository
+git clone https://github.com/example/org-charm
+cd org-charm
+
+# Build with devenv
+devenv shell
+go build .
+#+END_SRC
+
+** TODO Configure Your Org Directory                          :config:
+
+Set the ~-dir~ flag to point to your org files:
+
+#+BEGIN_SRC bash
+./org-charm -dir ~/Documents/org -port 2222
+#+END_SRC
+
+** TODO Connect via SSH
+
+#+BEGIN_SRC bash
+ssh localhost -p 2222
+#+END_SRC
+
+* Org Syntax Showcase
+
+** Text Formatting
+
+Org mode supports various inline formatting:
+
+- *Bold text* for emphasis
+- /Italic text/ for subtle emphasis
+- _Underlined text_ for highlighting
+- +Strikethrough+ for deleted content
+- =Verbatim= for literal text
+- ~Code~ for inline code
+
+** Lists
+
+*** Unordered Lists
+
+- First item
+  - Nested item A
+  - Nested item B
+    - Deeply nested
+- Second item
+- Third item
+
+*** Ordered Lists
+
+1. First step
+2. Second step
+3. Third step
+   1. Sub-step A
+   2. Sub-step B
+
+*** Checklists
+
+- [X] Complete task
+- [-] Partially complete
+- [ ] Pending task
+
+** Code Blocks
+
+Here's some Go code with syntax highlighting:
+
+#+BEGIN_SRC go
+package main
+
+import (
+    "fmt"
+    "github.com/charmbracelet/lipgloss"
+)
+
+func main() {
+    style := lipgloss.NewStyle().
+        Bold(true).
+        Foreground(lipgloss.Color("#7aa2f7"))
+
+    fmt.Println(style.Render("Hello, Org-Charm!"))
+}
+#+END_SRC
+
+And some Python:
+
+#+BEGIN_SRC python
+def fibonacci(n: int) -> list[int]:
+    """Generate Fibonacci sequence."""
+    fib = [0, 1]
+    for i in range(2, n):
+        fib.append(fib[i-1] + fib[i-2])
+    return fib[:n]
+
+print(fibonacci(10))
+#+END_SRC
+
+** Quotes
+
+#+BEGIN_QUOTE
+The only way to do great work is to love what you do.
+— Steve Jobs
+#+END_QUOTE
+
+#+BEGIN_QUOTE
+Simplicity is the ultimate sophistication.
+— Leonardo da Vinci
+#+END_QUOTE
+
+** Tables
+
+| Key       | Action            | Context     |
+|-----------+-------------------+-------------|
+| ↑ / k     | Move up           | File list   |
+| ↓ / j     | Move down         | File list   |
+| Enter / l | Open file         | File list   |
+| Esc / h   | Go back           | Document    |
+| q         | Quit              | Anywhere    |
+| ?         | Show help         | Anywhere    |
+
+** Links
+
+- Documentation: [[https://orgmode.org][Org Mode Manual]]
+- Source Code: [[https://github.com/charmbracelet/wish][Wish SSH Library]]
+- Styling: [[https://github.com/charmbracelet/lipgloss][Lipgloss]]
+
+-----
+
+* Statistics Example
+
+** Project Progress [2/4] [50%]
+- [X] Basic parser
+- [X] SSH server
+- [ ] Search functionality
+- [ ] Export features
+
+* Timestamps
+
+- Created: <2024-02-25 Sun>
+- Deadline: <2024-03-01 Fri>
+- Scheduled: <2024-02-26 Mon>
+
+* Footnotes
+
+This project uses go-org[fn:1] for parsing and chroma[fn:2] for syntax highlighting.
+
+[fn:1] https://github.com/niklasfasching/go-org
+[fn:2] https://github.com/alecthomas/chroma
