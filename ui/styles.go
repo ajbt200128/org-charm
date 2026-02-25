@@ -204,25 +204,20 @@ func NewStyles(r *lipgloss.Renderer) *Styles {
 	s.Heading1 = r.NewStyle().
 		Bold(true).
 		Foreground(colorH1).
-		MarginTop(1).
-		MarginBottom(1).
 		BorderStyle(lipgloss.NormalBorder()).
 		BorderBottom(true).
 		BorderForeground(colorH1)
 
 	s.Heading2 = r.NewStyle().
 		Bold(true).
-		Foreground(colorH2).
-		MarginTop(1)
+		Foreground(colorH2)
 
 	s.Heading3 = r.NewStyle().
 		Bold(true).
-		Foreground(colorH3).
-		MarginTop(1)
+		Foreground(colorH3)
 
 	s.Heading4 = r.NewStyle().
-		Foreground(colorH4).
-		MarginTop(1)
+		Foreground(colorH4)
 
 	// ═══════════════════════════════════════════════════════════════════
 	// TODO States
@@ -253,8 +248,7 @@ func NewStyles(r *lipgloss.Renderer) *Styles {
 	// ═══════════════════════════════════════════════════════════════════
 
 	s.Paragraph = r.NewStyle().
-		Foreground(colorFg).
-		MarginBottom(1)
+		Foreground(colorFg)
 
 	// ═══════════════════════════════════════════════════════════════════
 	// Lists
