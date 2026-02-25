@@ -3,6 +3,9 @@ FROM golang:1.23-alpine AS tester
 
 WORKDIR /app
 
+# Install git for go mod download
+RUN apk add --no-cache git
+
 # Copy go mod files first for caching
 COPY go.mod go.sum ./
 RUN go mod download
@@ -17,6 +20,9 @@ RUN go test -v ./... && go vet ./...
 FROM golang:1.23-alpine AS builder
 
 WORKDIR /app
+
+# Install git for go mod download
+RUN apk add --no-cache git
 
 # Build args for cross-compilation
 ARG TARGETOS=linux
