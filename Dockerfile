@@ -1,5 +1,5 @@
 # Test stage - runs tests before building final image
-FROM golang:1.23-alpine AS tester
+FROM golang:1.26-alpine AS tester
 
 WORKDIR /app
 
@@ -17,7 +17,7 @@ COPY . .
 RUN go test -v ./... && go vet ./...
 
 # Build stage
-FROM golang:1.23-alpine AS builder
+FROM golang:1.26-alpine AS builder
 
 WORKDIR /app
 
