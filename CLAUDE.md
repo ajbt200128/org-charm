@@ -52,8 +52,9 @@ go test ./...
 
 ### Block Elements
 - **Headings** (h1-h4 with rainbow colors, TODO/DONE badges, priority, tags)
+- **Planning** (SCHEDULED, DEADLINE, CLOSED with distinct colors)
 - **Paragraphs**
-- **Lists** (unordered, ordered, definition lists, checklists)
+- **Lists** (unordered, ordered, definition lists, checklists, **nested lists**)
 - **Code blocks** (`#+BEGIN_SRC`) with chroma syntax highlighting
 - **Quote blocks** (`#+BEGIN_QUOTE`)
 - **Example blocks** (`#+BEGIN_EXAMPLE`)
@@ -71,9 +72,13 @@ go test ./...
 - **Code** (`~text~`)
 - **Verbatim** (`=text=`)
 - **Links** (`[[url][description]]`)
-- **Timestamps** (`<2024-01-01 Mon>`)
+- **Active timestamps** (`<2024-01-01 Mon>`)
+- **Inactive timestamps** (`[2024-01-01 Mon]`) - styled in text
 - **Footnote references** (`[fn:1]`)
 - **Statistics** (`[2/4]`, `[50%]`)
+
+### Keybindings
+- `r` - Toggle raw/rendered view in document view
 
 ## go-org AST Types
 
@@ -171,11 +176,31 @@ for _, child := range item.Children {
     switch c := child.(type) {
     case goorg.Paragraph:
         content += r.renderInlineNodes(c.Children)  // Extract from Paragraph
+    case goorg.List:
+        // Nested list - render recursively with increased indent
+        nestedContent += r.renderListWithIndent(c, indent+1)
     default:
         content += r.RenderNode(child)
     }
 }
 ```
+
+### Planning Keywords Are Parsed as Text
+
+Planning keywords (SCHEDULED:, DEADLINE:, CLOSED:) are NOT special nodes in go-org.
+They appear as regular `Text` nodes within a `Paragraph` following a headline:
+
+```
+Headline
+  └── Paragraph
+        ├── Text("SCHEDULED: ")
+        ├── Timestamp(<2024-01-15 Mon>)
+        ├── Text(" DEADLINE: ")
+        └── Timestamp(<2024-01-20 Sat>)
+```
+
+Note: Inactive timestamps `[...]` (used with CLOSED) are NOT parsed as Timestamp nodes -
+they remain as plain text. Use `renderInactiveTimestamps()` to detect and style them.
 
 ### SSH Color Profile Must Be Forced
 
