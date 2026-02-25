@@ -291,7 +291,18 @@ func (r *Renderer) renderListItem(item goorg.ListItem, indent int) string {
 		checkbox = r.styles.CheckboxEmpty.Render("[ ]") + " "
 	}
 
-	content := r.renderInlineNodes(item.Children)
+	// ListItem.Children contains block elements (usually Paragraph)
+	// We need to extract and render the inline content from them
+	var content string
+	for _, child := range item.Children {
+		switch c := child.(type) {
+		case goorg.Paragraph:
+			content += r.renderInlineNodes(c.Children)
+		default:
+			// For other block types, render them normally
+			content += r.RenderNode(child)
+		}
+	}
 
 	b.WriteString(indentStr)
 	b.WriteString(r.styles.ListBullet.Render(bullet))
