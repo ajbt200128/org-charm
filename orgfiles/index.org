@@ -1,0 +1,36 @@
+#+TITLE: Welcome to Org-Charm
+#+AUTHOR: Your Name
+#+DATE: 2024
+
+Welcome to *Org-Charm*, an SSH server that beautifully renders your Emacs org-mode files.
+
+* Getting Started
+
+Connect via SSH to browse and read your org files:
+
+#+BEGIN_SRC bash
+ssh -p 2222 localhost
+#+END_SRC
+
+* Features
+
+- /Beautiful TUI/ rendering of org-mode files
+- *Syntax highlighting* for code blocks
+- Support for ~inline code~, =verbatim=, and _underline_
+- Nested lists and tables
+- Planning timestamps (SCHEDULED, DEADLINE, CLOSED)
+
+* Navigation
+
+| Key       | Action              |
+|-----------+---------------------|
+| ↑/↓ or j/k | Navigate            |
+| Enter     | Open document       |
+| n/p       | Next/prev document  |
+| r         | Toggle raw view     |
+| ?         | Help                |
+| q         | Quit                |
+
+* About
+
+This index page is rendered from =index.org=. Customize it to create your own welcome page!
