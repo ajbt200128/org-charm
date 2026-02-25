@@ -1,34 +1,36 @@
-# Build stage using Nix
-FROM nixos/nix:latest AS builder
-
-WORKDIR /app
-
-# Enable flakes
-RUN echo "experimental-features = nix-command flakes" >> /etc/nix/nix.conf
-
-# Copy source code
-COPY . .
-
-# Build args for cross-compilation
-ARG TARGETOS=linux
-ARG TARGETARCH=amd64
-
-# Build using nix-shell with Go
-RUN nix-shell -p go_1_23 --run "CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -ldflags='-w -s' -o org-charm ."
-
 # Test stage - runs tests before building final image
-FROM nixos/nix:latest AS tester
+FROM golang:1.23-alpine AS tester
 
 WORKDIR /app
 
-# Enable flakes
-RUN echo "experimental-features = nix-command flakes" >> /etc/nix/nix.conf
+# Copy go mod files first for caching
+COPY go.mod go.sum ./
+RUN go mod download
 
 # Copy source code
 COPY . .
 
 # Run tests and vet
-RUN nix-shell -p go_1_23 --run "go mod download && go test -v ./... && go vet ./..."
+RUN go test -v ./... && go vet ./...
+
+# Build stage
+FROM golang:1.23-alpine AS builder
+
+WORKDIR /app
+
+# Build args for cross-compilation
+ARG TARGETOS=linux
+ARG TARGETARCH=amd64
+
+# Copy go mod files first for caching
+COPY go.mod go.sum ./
+RUN go mod download
+
+# Copy source code
+COPY . .
+
+# Build binary
+RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -ldflags='-w -s' -o org-charm .
 
 # Runtime stage
 FROM alpine:3.19 AS runtime
