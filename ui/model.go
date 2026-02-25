@@ -45,6 +45,9 @@ type Model struct {
 
 	// Show help overlay
 	showHelp bool
+
+	// Show raw org content instead of rendered
+	rawView bool
 }
 
 // NewModel creates a new Model with the given renderer and org files directory
@@ -123,6 +126,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.currentView == ViewDocument {
 				m.currentView = ViewFileList
 				m.currentDoc = nil
+				m.rawView = false
 			}
 
 		case "up", "k":
@@ -165,6 +169,18 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.currentView == ViewDocument {
 				m.currentView = ViewFileList
 				m.currentDoc = nil
+				m.rawView = false
+			}
+
+		case "r":
+			if m.currentView == ViewDocument {
+				m.rawView = !m.rawView
+				if m.rawView {
+					m.viewport.SetContent(m.currentDoc.RawContent)
+				} else {
+					m.viewport.SetContent(m.renderDocument(m.currentDoc))
+				}
+				m.viewport.GotoTop()
 			}
 		}
 	}
@@ -300,8 +316,15 @@ func (m Model) renderDocumentView() string {
 	scrollPercent := fmt.Sprintf("%3.f%%", m.viewport.ScrollPercent()*100)
 	scrollInfo := m.styles.StatusBar.Render(" " + scrollPercent + " ")
 
+	var rawToggle string
+	if m.rawView {
+		rawToggle = "rendered"
+	} else {
+		rawToggle = "raw"
+	}
 	help := m.renderHelpBar([]helpItem{
 		{"↑/↓", "scroll"},
+		{"r", rawToggle},
 		{"esc", "back"},
 		{"?", "help"},
 		{"q", "quit"},
@@ -359,6 +382,7 @@ func (m Model) renderHelp() string {
 			items: []helpItem{
 				{"Page Up / Ctrl+u", "Scroll up"},
 				{"Page Down / Ctrl+d", "Scroll down"},
+				{"r", "Toggle raw/rendered view"},
 				{"Esc", "Return to file list"},
 			},
 		},

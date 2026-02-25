@@ -10,9 +10,10 @@ import (
 
 // OrgFile represents a parsed org file
 type OrgFile struct {
-	Name     string
-	Path     string
-	Document *goorg.Document
+	Name       string
+	Path       string
+	Document   *goorg.Document
+	RawContent string
 }
 
 // Title returns the document title from #+TITLE: or the filename
@@ -44,9 +45,10 @@ func ParseFile(path string) (*OrgFile, error) {
 	doc := config.Parse(strings.NewReader(string(content)), path)
 
 	return &OrgFile{
-		Name:     filepath.Base(path),
-		Path:     path,
-		Document: doc,
+		Name:       filepath.Base(path),
+		Path:       path,
+		Document:   doc,
+		RawContent: string(content),
 	}, nil
 }
 

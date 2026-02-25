@@ -291,13 +291,18 @@ func (r *Renderer) renderListItem(item goorg.ListItem, indent int) string {
 		checkbox = r.styles.CheckboxEmpty.Render("[ ]") + " "
 	}
 
-	// ListItem.Children contains block elements (usually Paragraph)
-	// We need to extract and render the inline content from them
+	// ListItem.Children contains block elements (usually Paragraph, but also nested List)
+	// We need to extract and render the inline content from Paragraphs,
+	// and recursively render nested Lists
 	var content string
+	var nestedContent string
 	for _, child := range item.Children {
 		switch c := child.(type) {
 		case goorg.Paragraph:
 			content += r.renderInlineNodes(c.Children)
+		case goorg.List:
+			// Nested list - render with increased indent
+			nestedContent += "\n" + r.renderListWithIndent(c, indent+1)
 		default:
 			// For other block types, render them normally
 			content += r.RenderNode(child)
@@ -309,8 +314,34 @@ func (r *Renderer) renderListItem(item goorg.ListItem, indent int) string {
 	b.WriteString(" ")
 	b.WriteString(checkbox)
 	b.WriteString(r.styles.ListItem.Render(content))
+	b.WriteString(nestedContent)
 
 	return b.String()
+}
+
+func (r *Renderer) renderListWithIndent(list goorg.List, indent int) string {
+	var b strings.Builder
+
+	for _, item := range list.Items {
+		switch n := item.(type) {
+		case goorg.ListItem:
+			b.WriteString(r.renderListItem(n, indent))
+			b.WriteString("\n")
+		case goorg.DescriptiveListItem:
+			// Descriptive list items with indent
+			indentStr := strings.Repeat("  ", indent)
+			term := r.renderInlineNodes(n.Term)
+			details := r.renderInlineNodes(n.Details)
+			b.WriteString(indentStr)
+			b.WriteString(r.styles.ListBullet.Render("•") + " ")
+			b.WriteString(r.styles.DescTerm.Render(term) + " ")
+			b.WriteString(r.styles.DescSeparator.Render("::") + " ")
+			b.WriteString(r.styles.ListItem.Render(details))
+			b.WriteString("\n")
+		}
+	}
+
+	return strings.TrimSuffix(b.String(), "\n")
 }
 
 func (r *Renderer) renderDescriptiveListItem(item goorg.DescriptiveListItem) string {
@@ -472,7 +503,7 @@ func (r *Renderer) renderInlineNodes(nodes []goorg.Node) string {
 func (r *Renderer) renderInlineNode(node goorg.Node) string {
 	switch n := node.(type) {
 	case goorg.Text:
-		return n.Content
+		return r.renderText(n.Content)
 	case goorg.Emphasis:
 		return r.renderEmphasis(n)
 	case goorg.RegularLink:
@@ -491,6 +522,95 @@ func (r *Renderer) renderInlineNode(node goorg.Node) string {
 		// For unknown types, try to get string representation
 		return fmt.Sprintf("%v", n)
 	}
+}
+
+// renderText handles plain text with planning keyword detection and inactive timestamps
+func (r *Renderer) renderText(content string) string {
+	// Check for planning keywords at start of text
+	planningKeywords := []struct {
+		keyword string
+		style   lipgloss.Style
+	}{
+		{"SCHEDULED:", r.styles.Scheduled},
+		{"DEADLINE:", r.styles.Deadline},
+		{"CLOSED:", r.styles.Closed},
+	}
+
+	for _, pk := range planningKeywords {
+		if strings.HasPrefix(content, pk.keyword) {
+			rest := content[len(pk.keyword):]
+			// Check for inactive timestamp in the rest (for CLOSED)
+			rest = r.renderInactiveTimestamps(rest)
+			return pk.style.Render(pk.keyword) + rest
+		}
+		// Also check for keyword with leading space (e.g., " DEADLINE:")
+		if strings.HasPrefix(content, " "+pk.keyword) {
+			rest := content[len(pk.keyword)+1:]
+			rest = r.renderInactiveTimestamps(rest)
+			return " " + pk.style.Render(pk.keyword) + rest
+		}
+	}
+
+	// Check for inactive timestamps anywhere in text
+	return r.renderInactiveTimestamps(content)
+}
+
+// renderInactiveTimestamps finds and styles inactive timestamps [YYYY-MM-DD ...]
+func (r *Renderer) renderInactiveTimestamps(content string) string {
+	var result strings.Builder
+	remaining := content
+
+	for {
+		// Find opening bracket for inactive timestamp
+		start := strings.Index(remaining, "[")
+		if start == -1 {
+			result.WriteString(remaining)
+			break
+		}
+
+		// Find closing bracket
+		end := strings.Index(remaining[start:], "]")
+		if end == -1 {
+			result.WriteString(remaining)
+			break
+		}
+		end += start // Adjust to absolute position
+
+		// Check if this looks like an inactive timestamp [YYYY-MM-DD ...]
+		timestampContent := remaining[start+1 : end]
+		if len(timestampContent) >= 10 && isInactiveTimestamp(timestampContent) {
+			result.WriteString(remaining[:start])
+			result.WriteString(r.styles.Timestamp.Render("[" + timestampContent + "]"))
+			remaining = remaining[end+1:]
+		} else {
+			// Not a timestamp, keep going
+			result.WriteString(remaining[:end+1])
+			remaining = remaining[end+1:]
+		}
+	}
+
+	return result.String()
+}
+
+// isInactiveTimestamp checks if content looks like a timestamp (YYYY-MM-DD ...)
+func isInactiveTimestamp(content string) bool {
+	// Basic check: starts with date pattern YYYY-MM-DD
+	if len(content) < 10 {
+		return false
+	}
+	// Check for digit patterns at expected positions
+	for i, c := range content[:10] {
+		if i == 4 || i == 7 {
+			if c != '-' {
+				return false
+			}
+		} else {
+			if c < '0' || c > '9' {
+				return false
+			}
+		}
+	}
+	return true
 }
 
 func (r *Renderer) renderEmphasis(e goorg.Emphasis) string {

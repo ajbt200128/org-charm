@@ -85,6 +85,11 @@ type Styles struct {
 	FootnoteRef     lipgloss.Style
 	Statistics      lipgloss.Style
 
+	// Planning keywords
+	Scheduled lipgloss.Style
+	Deadline  lipgloss.Style
+	Closed    lipgloss.Style
+
 	// Help/hints
 	HelpKey  lipgloss.Style
 	HelpText lipgloss.Style
@@ -417,6 +422,22 @@ func NewStyles(r *lipgloss.Renderer) *Styles {
 	s.Statistics = r.NewStyle().
 		Foreground(colorGreen).
 		Bold(true)
+
+	// ═══════════════════════════════════════════════════════════════════
+	// Planning Keywords
+	// ═══════════════════════════════════════════════════════════════════
+
+	s.Scheduled = r.NewStyle().
+		Foreground(colorGreen).
+		Bold(true)
+
+	s.Deadline = r.NewStyle().
+		Foreground(colorRed).
+		Bold(true)
+
+	s.Closed = r.NewStyle().
+		Foreground(colorSubtle).
+		Italic(true)
 
 	// ═══════════════════════════════════════════════════════════════════
 	// Help
