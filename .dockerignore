@@ -1,0 +1,28 @@
+# Git
+.git
+.gitignore
+
+# IDE
+.idea
+.vscode
+*.swp
+*.swo
+
+# Build artifacts
+org-charm
+*.exe
+coverage.out
+coverage.html
+
+# Development
+.devenv
+.direnv
+.envrc
+devenv.lock
+
+# Documentation
+*.md
+!go.mod
+
+# Claude
+.claude
