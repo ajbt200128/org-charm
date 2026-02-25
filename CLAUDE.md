@@ -137,6 +137,61 @@ Colors follow the Tokyo Night palette:
 3. Add any new styles to `styles.go` (both struct field and initialization)
 4. Test with sample org files
 
+## Important Implementation Details
+
+### go-org AST Gotcha: List Items Wrap Content in Paragraphs
+
+When parsing list items, go-org wraps the content in `Paragraph` nodes:
+
+```org
+- List item with *bold* text
+```
+
+Produces this AST:
+```
+ListItem
+  └── Paragraph          ← block element!
+        ├── Text("List item with ")
+        ├── Emphasis("*bold*")
+        └── Text(" text")
+```
+
+**Not this** (what you might expect):
+```
+ListItem
+  ├── Text("List item with ")
+  ├── Emphasis("*bold*")
+  └── Text(" text")
+```
+
+So when rendering list items, you must extract inline nodes from `Paragraph.Children`:
+
+```go
+for _, child := range item.Children {
+    switch c := child.(type) {
+    case goorg.Paragraph:
+        content += r.renderInlineNodes(c.Children)  // Extract from Paragraph
+    default:
+        content += r.RenderNode(child)
+    }
+}
+```
+
+### SSH Color Profile Must Be Forced
+
+Lipgloss uses `termenv` for color detection, which often fails over SSH (no real TTY to query). You must explicitly force TrueColor:
+
+```go
+// In bubbletea middleware setup
+bubbletea.MiddlewareWithColorProfile(teaHandler, termenv.TrueColor)
+
+// When creating session renderer
+renderer := bubbletea.MakeRenderer(sess)
+renderer.SetColorProfile(termenv.TrueColor)
+```
+
+Without this, all styles render as plain text with no ANSI codes.
+
 ## Known Limitations
 
 - No image rendering (requires sixel support)
