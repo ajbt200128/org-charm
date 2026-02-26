@@ -1,0 +1,64 @@
+#+TITLE: The History of Computing
+#+AUTHOR: Dr. Example
+#+DATE: 2026-02-25
+
+* Abstract
+
+This paper explores the evolution of computing from mechanical
+calculators to modern quantum computers[fn:1].
+
+* Early Mechanical Computers
+
+The history of computing begins with mechanical devices like
+the abacus[fn:abacus] and Babbage's Analytical Engine[fn:babbage].
+
+* The Digital Revolution
+
+The transition to electronic computing[fn:transition] marked a
+fundamental shift in capabilities and applications.
+
+* Conclusion
+
+Computing continues to evolve at an unprecedented pace[fn:moore].
+
+-----
+
+* Footnotes
+
+[fn:1] For a comprehensive overview, see "Computing: A Concise
+History" by Paul Ceruzzi[fn:ceruzzi].
+
+[fn:ceruzzi] MIT Press, 2012. Ceruzzi also wrote about space
+technology[fn:space].
+
+[fn:space] "Beyond the Limits: Flight Enters the Computer Age" (1989).
+
+[fn:abacus] Dating back to 2400 BCE in Babylon[fn:babylon].
+
+[fn:babylon] The Babylonians also developed early mathematical
+notation systems.
+
+[fn:babbage] Charles Babbage (1791-1871) designed but never
+completed the Analytical Engine[fn:ada].
+
+[fn:ada] Ada Lovelace wrote the first algorithm intended for
+the machine, making her the first computer programmer.
+
+[fn:transition] ENIAC (1945) is often cited as the first
+general-purpose electronic computer[fn:eniac-debate].
+
+[fn:eniac-debate] Though this claim is contested by proponents
+of other machines like the Colossus[fn:colossus].
+
+[fn:colossus] The Colossus machines were used for British
+codebreaking during WWII but remained classified for decades.
+
+[fn:moore] Moore's Law has held for over 50 years[fn:limits-moore],
+though physical limits are now being reached.
+
+[fn:limits-moore] Current transistors are approaching atomic
+scale, requiring new paradigms like quantum computing[fn:quantum].
+
+[fn:quantum] Quantum computing uses qubits which can exist in
+superposition, potentially solving certain problems exponentially
+faster.

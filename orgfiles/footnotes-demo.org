@@ -1,0 +1,98 @@
+#+TITLE: Nested Footnotes Demo
+#+AUTHOR: Org-Charm Examples
+#+DATE: 2026-02-25
+
+* Introduction to Footnotes
+
+This document demonstrates the nested footnotes feature in org-charm.
+Footnotes are a great way to add supplementary information without
+cluttering the main text[fn:1].
+
+* Basic Footnotes
+
+Org-mode supports inline footnotes and named footnotes. Here's an
+example of a basic footnote[fn:2]. You can also use numbered
+footnotes[fn:3] for simpler references.
+
+* Nested Footnotes in Action
+
+This is where it gets interesting! When you have complex topics,
+sometimes a footnote needs its own footnote[fn:complex]. This creates
+a hierarchy of supplementary information.
+
+Consider academic writing where you might cite a source[fn:academic],
+and that source itself has important caveats that deserve their own
+annotation.
+
+* Technical Documentation
+
+In technical docs, you might explain a concept[fn:tech] that requires
+diving deeper into implementation details, which themselves have
+edge cases worth noting.
+
+* Conclusion
+
+Nested footnotes help organize complex information hierarchically,
+making documents more readable while preserving depth for those
+who want it[fn:meta].
+
+-----
+
+* Footnotes
+
+[fn:1] Footnotes appear at the bottom of the document and provide
+additional context without interrupting the flow of reading.
+
+[fn:2] This is a simple footnote. Nothing fancy here - just
+additional information about the topic at hand.
+
+[fn:3] Numbered footnotes are concise and easy to reference.
+
+[fn:complex] This footnote explains a complex topic. But wait -
+there's more detail needed here[fn:nested1], and even another
+point worth mentioning[fn:nested2].
+
+[fn:nested1] This is a *nested* footnote (level 1). It provides
+deeper context for the parent footnote. Sometimes you need to go
+even deeper[fn:deep1].
+
+[fn:nested2] Another nested footnote at level 1. This one covers
+a different aspect of the complex topic mentioned above.
+
+[fn:deep1] Now we're at level 2! This is displayed with roman
+numerals (i, ii, iii). You could theoretically go even deeper[fn:deeper].
+
+[fn:deeper] Level 3 uses Greek letters. This is probably as deep
+as you'd ever want to go in practice.
+
+[fn:academic] Academic citation example. This source has important
+methodology notes[fn:method] and limitations[fn:limits].
+
+[fn:method] The methodology used in this study involved multiple
+phases, each with their own considerations[fn:phase1].
+
+[fn:phase1] Phase 1 involved initial data collection with specific
+protocols that differed from later phases.
+
+[fn:limits] Important limitations include sample size and temporal
+constraints.
+
+[fn:tech] Technical concept: API rate limiting. The implementation
+details[fn:impl] vary by use case.
+
+[fn:impl] Implementation uses token bucket algorithm with configurable
+parameters. Edge cases[fn:edge] should be handled gracefully.
+
+[fn:edge] Edge cases include burst traffic patterns and clock skew
+in distributed systems.
+
+[fn:meta] This footnote is self-referential - it's about footnotes!
+The feature you're using right now[fn:recursive] demonstrates the
+full depth of nested annotation support.
+
+[fn:recursive] And this footnote references the footnote system
+itself. We could keep going[fn:turtles], but let's stop here.
+
+[fn:turtles] It's turtles all the way down! But seriously, four
+levels (numbers, letters, roman numerals, Greek) should cover
+any practical use case.

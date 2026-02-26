@@ -1,0 +1,90 @@
+#+TITLE: Org-Mode Basics Tutorial
+#+AUTHOR: Tutorial Series
+#+DATE: 2026-02-25
+
+* What is Org-Mode?
+
+Org-mode is a powerful document editing and organization system
+for Emacs[fn:1]. It supports outlines, notes, planning, and more.
+
+* Basic Syntax
+
+** Headings
+
+Use asterisks for headings:
+- =*= for level 1
+- =**= for level 2
+- =***= for level 3
+
+** Text Formatting
+
+- *bold* text uses asterisks
+- /italic/ text uses slashes
+- _underline_ uses underscores
+- =verbatim= uses equals
+- ~code~ uses tildes
+- +strikethrough+ uses plus
+
+** Lists
+
+Unordered lists use =-= or =+=:
+- Item one
+- Item two
+  - Nested item
+- Item three
+
+Ordered lists use numbers:
+1. First item
+2. Second item
+3. Third item
+
+** Links
+
+Links use double brackets: =[[url][description]]=
+
+Example: [[https://orgmode.org][Org-Mode Website]]
+
+* Footnotes in Org-Mode
+
+Footnotes are created with =[fn:name]=[fn:2]. They can be inline
+or defined separately.
+
+Inline footnotes look like this[fn:inline:This is an inline footnote
+that contains the definition right here in the text.].
+
+* Code Blocks
+
+Source code blocks support syntax highlighting[fn:code]:
+
+#+BEGIN_SRC python
+def hello():
+    print("Hello, Org-Mode!")
+
+hello()
+#+END_SRC
+
+-----
+
+* Footnotes
+
+[fn:1] GNU Emacs is a free, extensible text editor[fn:gnu].
+Org-mode has been included by default since Emacs 22.
+
+[fn:gnu] GNU stands for "GNU's Not Unix" - a recursive acronym[fn:recursive].
+
+[fn:recursive] Recursive acronyms are common in computing, like
+PHP ("PHP: Hypertext Preprocessor").
+
+[fn:2] Footnotes can reference other footnotes[fn:meta], creating
+nested annotations.
+
+[fn:meta] This is a nested footnote about footnotes!
+
+[fn:code] Org-mode supports many languages for syntax highlighting,
+including Python[fn:python], JavaScript, Go, Rust, and more.
+
+[fn:python] Python is particularly well-supported with org-babel
+for literate programming[fn:babel].
+
+[fn:babel] Org-babel allows executing code blocks directly in
+your document and capturing the output.
