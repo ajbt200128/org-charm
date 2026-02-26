@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	_ "embed"
 	"errors"
 	"flag"
 	"net"
@@ -22,6 +23,9 @@ import (
 	"github.com/charmbracelet/wish/logging"
 	"github.com/muesli/termenv"
 )
+
+//go:embed CHANGELOG.md
+var changelog string
 
 func main() {
 	// Command line flags
@@ -121,7 +125,7 @@ func makeTeaHandler(files []string) bubbletea.Handler {
 		)
 
 		// Create the model with session-specific renderer
-		model := ui.NewModel(renderer, files)
+		model := ui.NewModel(renderer, files, changelog)
 
 		return model, []tea.ProgramOption{
 			tea.WithAltScreen(),

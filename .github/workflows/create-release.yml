@@ -1,0 +1,137 @@
+name: Create Release
+
+on:
+  pull_request:
+    types: [closed]
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  create-release:
+    # Only run if PR was merged and has the release label
+    if: github.event.pull_request.merged == true && contains(github.event.pull_request.labels.*.name, 'release')
+    runs-on: ubuntu-latest
+    env:
+      PR_TITLE: ${{ github.event.pull_request.title }}
+    outputs:
+      version: ${{ steps.extract-version.outputs.version }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Extract version from PR title
+        id: extract-version
+        run: |
+          # PR title format: "Release vX.Y.Z"
+          VERSION=$(echo "$PR_TITLE" | grep -oP 'v\d+\.\d+\.\d+' | head -1)
+          if [ -z "$VERSION" ]; then
+            echo "Error: Could not extract version from PR title"
+            exit 1
+          fi
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+
+      - name: Extract changelog for this version
+        id: changelog
+        run: |
+          VERSION="${{ steps.extract-version.outputs.version }}"
+          VERSION_NUM="${VERSION#v}"
+
+          # Extract the changelog section for this version
+          CHANGELOG=$(awk "/## \[${VERSION_NUM}\]/{flag=1; next} /## \[/{flag=0} flag" CHANGELOG.md)
+
+          # Write to file for multiline handling
+          echo "$CHANGELOG" > /tmp/changelog.txt
+
+      - name: Create and push tag
+        env:
+          VERSION: ${{ steps.extract-version.outputs.version }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -a "$VERSION" -m "Release $VERSION"
+          git push origin "$VERSION"
+
+  build:
+    needs: create-release
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - goos: linux
+            goarch: amd64
+          - goos: linux
+            goarch: arm64
+          - goos: darwin
+            goarch: amd64
+          - goos: darwin
+            goarch: arm64
+          - goos: windows
+            goarch: amd64
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.create-release.outputs.version }}
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.23"
+
+      - name: Build binary
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          CGO_ENABLED: "0"
+        run: |
+          BINARY_NAME="org-charm-${{ matrix.goos }}-${{ matrix.goarch }}"
+          if [ "${{ matrix.goos }}" = "windows" ]; then
+            BINARY_NAME="${BINARY_NAME}.exe"
+          fi
+          go build -ldflags="-w -s" -o "${BINARY_NAME}" .
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: org-charm-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: org-charm-*
+
+  release:
+    needs: [create-release, build]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: Extract changelog for release notes
+        id: changelog
+        env:
+          VERSION: ${{ needs.create-release.outputs.version }}
+        run: |
+          VERSION_NUM="${VERSION#v}"
+
+          # Extract the changelog section for this version
+          CHANGELOG=$(awk "/## \[${VERSION_NUM}\]/{flag=1; next} /## \[/{flag=0} flag" CHANGELOG.md)
+
+          # Use delimiter for multiline output
+          {
+            echo "notes<<EOF"
+            echo "$CHANGELOG"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.create-release.outputs.version }}
+          name: ${{ needs.create-release.outputs.version }}
+          body: ${{ steps.changelog.outputs.notes }}
+          files: artifacts/*
+          make_latest: true

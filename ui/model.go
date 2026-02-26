@@ -22,6 +22,7 @@ type View int
 const (
 	ViewFileList View = iota
 	ViewDocument
+	ViewCredits
 )
 
 // Animation types
@@ -96,6 +97,9 @@ type Model struct {
 	// Show raw org content instead of rendered
 	rawView bool
 
+	// Changelog content for credits view
+	changelog string
+
 	// Animation state
 	animType        AnimationType
 	animSpring      harmonica.Spring
@@ -108,10 +112,11 @@ type Model struct {
 }
 
 // NewModel creates a new Model with the given renderer and org files directory
-func NewModel(renderer *lipgloss.Renderer, files []string) Model {
+func NewModel(renderer *lipgloss.Renderer, files []string, changelog string) Model {
 	m := Model{
 		renderer:      renderer,
 		styles:        NewStyles(renderer),
+		changelog:     changelog,
 		files:         files,
 		orgFiles:      make([]*org.OrgFile, 0),
 		selectedIndex: 0,
@@ -220,6 +225,15 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.currentView = ViewFileList
 				m.currentDoc = nil
 				m.rawView = false
+			} else if m.currentView == ViewCredits {
+				m.currentView = ViewFileList
+			}
+
+		case "c":
+			if m.currentView == ViewFileList {
+				m.currentView = ViewCredits
+				m.viewport.SetContent(m.renderCreditsContent())
+				m.viewport.GotoTop()
 			}
 
 		case "up", "k":
@@ -315,8 +329,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	}
 
-	// Handle viewport updates when viewing document
-	if m.currentView == ViewDocument && !m.showHelp {
+	// Handle viewport updates when viewing document or credits
+	if (m.currentView == ViewDocument || m.currentView == ViewCredits) && !m.showHelp {
 		m.viewport, cmd = m.viewport.Update(msg)
 		cmds = append(cmds, cmd)
 	}
@@ -336,6 +350,8 @@ func (m Model) View() string {
 		content = m.renderFileList()
 	case ViewDocument:
 		content = m.renderDocumentView()
+	case ViewCredits:
+		content = m.renderCreditsView()
 	}
 
 	// Overlay help if shown
@@ -691,12 +707,105 @@ func (m Model) renderFileList() string {
 	help := m.renderHelpBar([]helpItem{
 		{"↑/↓", "navigate"},
 		{"enter", "open"},
+		{"c", "credits"},
 		{"?", "help"},
 		{"q", "quit"},
 	})
 	b.WriteString(help)
 
 	return m.styles.App.Render(b.String())
+}
+
+func (m Model) renderCreditsView() string {
+	var b strings.Builder
+
+	// Header
+	header := m.styles.Header.Width(m.width - 4).Render("  ✨ Credits & Changelog")
+	b.WriteString(header)
+	b.WriteString("\n")
+
+	// Viewport content
+	b.WriteString(m.viewport.View())
+	b.WriteString("\n")
+
+	// Footer
+	scrollPercent := fmt.Sprintf("%3.f%%", m.viewport.ScrollPercent()*100)
+	scrollInfo := m.styles.StatusBar.Render(" " + scrollPercent + " ")
+	help := m.renderHelpBar([]helpItem{
+		{"↑/↓", "scroll"},
+		{"esc", "back"},
+		{"q", "quit"},
+	})
+
+	footer := lipgloss.JoinHorizontal(lipgloss.Center, scrollInfo, "  ", help)
+	b.WriteString(footer)
+
+	return m.styles.App.Render(b.String())
+}
+
+func (m Model) renderCreditsContent() string {
+	var b strings.Builder
+
+	// Authors section
+	b.WriteString(m.styles.DocTitle.Width(m.width - 12).Render("Authors"))
+	b.WriteString("\n\n")
+
+	authors := []struct {
+		name string
+		role string
+	}{
+		{"Adam Tao", "Creator & Maintainer"},
+		{"Claude (Anthropic)", "AI Pair Programmer"},
+	}
+
+	for _, author := range authors {
+		b.WriteString(m.styles.Bold.Render("  • " + author.name))
+		b.WriteString(m.styles.HelpText.Render(" — " + author.role))
+		b.WriteString("\n")
+	}
+
+	b.WriteString("\n")
+	b.WriteString(m.styles.HRule.Width(m.width - 12).Render(""))
+	b.WriteString("\n\n")
+
+	// Changelog section
+	b.WriteString(m.styles.DocTitle.Width(m.width - 12).Render("Changelog"))
+	b.WriteString("\n\n")
+
+	// Parse and render the changelog with simple formatting
+	lines := strings.Split(m.changelog, "\n")
+	for _, line := range lines {
+		// Skip the main title
+		if strings.HasPrefix(line, "# ") {
+			continue
+		}
+
+		// Format headers
+		if strings.HasPrefix(line, "## ") {
+			version := strings.TrimPrefix(line, "## ")
+			b.WriteString(m.styles.Heading2.Render(version))
+			b.WriteString("\n")
+		} else if strings.HasPrefix(line, "### ") {
+			section := strings.TrimPrefix(line, "### ")
+			b.WriteString(m.styles.Heading3.Render("  " + section))
+			b.WriteString("\n")
+		} else if strings.HasPrefix(line, "- ") {
+			item := strings.TrimPrefix(line, "- ")
+			b.WriteString(m.styles.Paragraph.Render("    • " + item))
+			b.WriteString("\n")
+		} else if strings.HasPrefix(line, "  - ") {
+			item := strings.TrimPrefix(line, "  - ")
+			b.WriteString(m.styles.HelpText.Render("      ◦ " + item))
+			b.WriteString("\n")
+		} else if strings.TrimSpace(line) != "" {
+			b.WriteString(m.styles.Paragraph.Render("  " + line))
+			b.WriteString("\n")
+		} else {
+			b.WriteString("\n")
+		}
+	}
+
+	return b.String()
 }
 
 func (m Model) renderDocumentView() string {
@@ -837,6 +946,7 @@ func (m Model) renderHelp() string {
 		{
 			name: "General",
 			items: []helpItem{
+				{"c", "Show credits & changelog"},
 				{"?", "Toggle this help"},
 				{"q / Ctrl+c", "Quit"},
 			},
