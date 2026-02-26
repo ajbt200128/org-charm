@@ -75,8 +75,8 @@ jobs:
           tags: |
             type=ref,event=branch,suffix=-${{ matrix.arch }}
             type=ref,event=pr,suffix=-${{ matrix.arch }}
-            type=semver,pattern={{version}},suffix=-${{ matrix.arch }}
-            type=semver,pattern={{major}}.{{minor}},suffix=-${{ matrix.arch }}
+            type=semver,pattern=v{{version}},suffix=-${{ matrix.arch }}
+            type=semver,pattern=v{{major}}.{{minor}},suffix=-${{ matrix.arch }}
             type=sha,suffix=-${{ matrix.arch }}
 
       - name: Build and push Docker image
@@ -168,18 +168,34 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Create and push multi-arch manifest
+        env:
+          REF_NAME: ${{ github.ref_name }}
+          REF: ${{ github.ref }}
         run: |
+          IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}"
+
           # Get the tag based on event type
-          if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
-            VERSION="${{ github.ref_name }}"
-            TAGS="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${VERSION} ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest"
-          elif [[ "${{ github.ref }}" == refs/heads/* ]]; then
-            BRANCH="${{ github.ref_name }}"
-            TAGS="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${BRANCH}"
+          if [[ "$REF" == refs/tags/v* ]]; then
+            # For version tags, create manifests for:
+            # - vX.Y.Z (full version with v)
+            # - X.Y.Z (full version without v)
+            # - vX.Y (major.minor with v)
+            # - latest
+            VERSION="$REF_NAME"
+            VERSION_NO_V="${VERSION#v}"
+            MAJOR_MINOR="v${VERSION_NO_V%.*}"
+
+            TAGS="${IMAGE}:${VERSION} ${IMAGE}:${VERSION_NO_V} ${IMAGE}:${MAJOR_MINOR} ${IMAGE}:latest"
+            SOURCE_TAG="$VERSION"
+          elif [[ "$REF" == refs/heads/* ]]; then
+            BRANCH="$REF_NAME"
+            TAGS="${IMAGE}:${BRANCH}"
+            SOURCE_TAG="$BRANCH"
           fi
 
           for TAG in $TAGS; do
+            echo "Creating manifest for $TAG"
             docker buildx imagetools create -t "${TAG}" \
-              "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.ref_name }}-amd64" \
-              "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.ref_name }}-arm64" || true
+              "${IMAGE}:${SOURCE_TAG}-amd64" \
+              "${IMAGE}:${SOURCE_TAG}-arm64" || true
           done
