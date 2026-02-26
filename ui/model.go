@@ -750,17 +750,33 @@ func (m Model) renderCreditsContent() string {
 	b.WriteString(m.styles.DocTitle.Width(m.width - 12).Render("Authors"))
 	b.WriteString("\n\n")
 
-	authors := []struct {
+	b.WriteString(m.styles.Bold.Render("  • Austin Theriault"))
+	b.WriteString(m.styles.HelpText.Render(" — Creator & Maintainer"))
+	b.WriteString("\n")
+	b.WriteString(m.styles.HelpText.Render("    github@cutedogs.org"))
+	b.WriteString("\n")
+
+	b.WriteString("\n")
+	b.WriteString(m.styles.HRule.Width(m.width - 12).Render(""))
+	b.WriteString("\n\n")
+
+	// Tools section
+	b.WriteString(m.styles.DocTitle.Width(m.width - 12).Render("Built With"))
+	b.WriteString("\n\n")
+
+	tools := []struct {
 		name string
-		role string
+		desc string
 	}{
-		{"Adam Tao", "Creator & Maintainer"},
-		{"Claude (Anthropic)", "AI Pair Programmer"},
+		{"Charm.sh", "Bubbletea, Lipgloss, Wish, Harmonica"},
+		{"go-org", "Org-mode parser for Go"},
+		{"Chroma", "Syntax highlighting"},
+		{"Claude (Anthropic)", "AI pair programming assistant"},
 	}
 
-	for _, author := range authors {
-		b.WriteString(m.styles.Bold.Render("  • " + author.name))
-		b.WriteString(m.styles.HelpText.Render(" — " + author.role))
+	for _, tool := range tools {
+		b.WriteString(m.styles.Bold.Render("  • " + tool.name))
+		b.WriteString(m.styles.HelpText.Render(" — " + tool.desc))
 		b.WriteString("\n")
 	}
 
