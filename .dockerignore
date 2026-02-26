@@ -22,7 +22,7 @@ devenv.lock
 
 # Documentation
 *.md
-!go.mod
+!CHANGELOG.md
 
 # Claude
 .claude
