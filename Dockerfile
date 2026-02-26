@@ -53,8 +53,8 @@ RUN apk add --no-cache ca-certificates
 # Copy the binary from builder
 COPY --from=builder /app/org-charm /app/org-charm
 
-# Create directory for org files and set ownership
-RUN mkdir -p /data && chown -R orgcharm:orgcharm /data /app
+# Create directory for org files
+RUN mkdir -p /data
 
 # Expose SSH port (use 2222 internally, map to 22 externally with -p 22:2222)
 EXPOSE 2222
