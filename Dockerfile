@@ -63,9 +63,6 @@ RUN mkdir -p /data && chown -R orgcharm:orgcharm /data /app
 # Expose SSH port (use 2222 internally, map to 22 externally with -p 22:2222)
 EXPOSE 2222
 
-# Switch to non-root user
-USER orgcharm
-
 # Run the server
 ENTRYPOINT ["/app/org-charm"]
 CMD ["-port", "2222", "-dir", "/data"]
