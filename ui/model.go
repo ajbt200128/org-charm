@@ -766,17 +766,20 @@ func (m Model) renderCreditsContent() string {
 
 	tools := []struct {
 		name string
+		url  string
 		desc string
 	}{
-		{"Charm.sh", "Bubbletea, Lipgloss, Wish, Harmonica"},
-		{"go-org", "Org-mode parser for Go"},
-		{"Chroma", "Syntax highlighting"},
-		{"Claude (Anthropic)", "AI pair programming assistant"},
+		{"Charm.sh", "https://charm.sh", "Bubbletea, Lipgloss, Wish, Harmonica"},
+		{"go-org", "https://github.com/niklasfasching/go-org", "Org-mode parser for Go"},
+		{"Chroma", "https://github.com/alecthomas/chroma", "Syntax highlighting"},
+		{"Claude", "https://claude.ai", "AI pair programming assistant"},
 	}
 
 	for _, tool := range tools {
 		b.WriteString(m.styles.Bold.Render("  • " + tool.name))
 		b.WriteString(m.styles.HelpText.Render(" — " + tool.desc))
+		b.WriteString("\n")
+		b.WriteString(m.styles.Link.Render("    " + tool.url))
 		b.WriteString("\n")
 	}
 
