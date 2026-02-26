@@ -49,11 +49,7 @@ WORKDIR /app
 
 # Install ca-certificates for HTTPS
 RUN apk add --no-cache ca-certificates
-
-# Create non-root user and group
-RUN addgroup -g 1000 orgcharm && \
-    adduser -u 1000 -G orgcharm -s /bin/sh -D orgcharm
-
+# 
 # Copy the binary from builder
 COPY --from=builder /app/org-charm /app/org-charm
 
