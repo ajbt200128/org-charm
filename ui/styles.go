@@ -17,6 +17,7 @@ type Styles struct {
 	FileItem         lipgloss.Style
 	FileItemSelected lipgloss.Style
 	FileItemActive   lipgloss.Style
+	FileDir          lipgloss.Style
 	FileMeta         lipgloss.Style
 
 	// Document metadata
@@ -178,6 +179,11 @@ func NewStyles(r *lipgloss.Renderer) *Styles {
 		Bold(true).
 		PaddingLeft(0).
 		PaddingRight(2)
+
+	s.FileDir = r.NewStyle().
+		Foreground(colorCyan).
+		Bold(true).
+		PaddingLeft(2)
 
 	s.FileMeta = r.NewStyle().
 		Foreground(colorSubtle).

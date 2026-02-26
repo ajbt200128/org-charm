@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Recursive folder scanning for org files (searches all subfolders)
+- Ranger-style file tree navigation
+  - Tree view with folder expansion/collapse
+  - Visual hierarchy with indentation and icons (📂/📁/📄)
+  - Space to toggle folders, arrow keys to navigate
+  - Scroll support for large file trees
 - Nested footnote support with distinct symbols and indentation per level
   - Level 0: [1], [2], [3] (yellow)
   - Level 1: a., b., c. (cyan)

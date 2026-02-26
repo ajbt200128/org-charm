@@ -73,10 +73,16 @@ type Model struct {
 	width  int
 	height int
 
-	// File list state
-	files         []string
-	orgFiles      []*org.OrgFile
-	selectedIndex int
+	// File tree state (ranger-style)
+	rootDir       string           // Root directory for org files
+	fileTree      []*org.FileEntry // Root level entries
+	flatList      []*org.FileEntry // Flattened visible entries
+	selectedIndex int              // Currently selected index in flatList
+	listOffset    int              // Scroll offset for file list
+
+	// Legacy compatibility
+	files    []string
+	orgFiles []*org.OrgFile
 
 	// Index file for main page (optional)
 	indexFile *org.OrgFile
@@ -112,14 +118,15 @@ type Model struct {
 }
 
 // NewModel creates a new Model with the given renderer and org files directory
-func NewModel(renderer *lipgloss.Renderer, files []string, changelog string) Model {
+func NewModel(renderer *lipgloss.Renderer, rootDir string, changelog string) Model {
 	m := Model{
 		renderer:      renderer,
 		styles:        NewStyles(renderer),
 		changelog:     changelog,
-		files:         files,
+		rootDir:       rootDir,
 		orgFiles:      make([]*org.OrgFile, 0),
 		selectedIndex: 0,
+		listOffset:    0,
 		currentView:   ViewFileList,
 		showHelp:      false,
 		// Initialize animation - start with wave ripple
@@ -130,18 +137,70 @@ func NewModel(renderer *lipgloss.Renderer, files []string, changelog string) Mod
 		animTarget:   1.0,
 	}
 
-	// Parse all org files, separating index.org
-	for _, f := range files {
-		if orgFile, err := org.ParseFile(f); err == nil {
-			if strings.HasSuffix(strings.ToLower(f), "index.org") {
+	// Build file tree
+	tree, err := org.BuildFileTree(rootDir)
+	if err == nil {
+		m.fileTree = tree
+		// Expand root level by default
+		for _, e := range m.fileTree {
+			if e.IsDir {
+				e.Expanded = true
+			}
+		}
+		m.flatList = org.FlattenTree(m.fileTree)
+	}
+
+	// Check for index.org at root level
+	for _, entry := range m.fileTree {
+		if !entry.IsDir && strings.ToLower(entry.Name) == "index.org" {
+			if orgFile, err := entry.GetOrgFile(); err == nil {
 				m.indexFile = orgFile
-			} else {
+			}
+			break
+		}
+	}
+
+	// Build legacy orgFiles list (non-index files)
+	for _, entry := range m.flatList {
+		if !entry.IsDir && strings.ToLower(entry.Name) != "index.org" {
+			if orgFile, err := entry.GetOrgFile(); err == nil {
 				m.orgFiles = append(m.orgFiles, orgFile)
 			}
 		}
 	}
 
 	return m
+}
+
+// refreshFlatList rebuilds the flat list based on current expansion state
+func (m *Model) refreshFlatList() {
+	m.flatList = org.FlattenTree(m.fileTree)
+	// Ensure selected index is valid
+	if m.selectedIndex >= len(m.flatList) {
+		m.selectedIndex = len(m.flatList) - 1
+	}
+	if m.selectedIndex < 0 {
+		m.selectedIndex = 0
+	}
+}
+
+// ensureSelectedVisible adjusts scroll offset to keep selected item visible
+func (m *Model) ensureSelectedVisible() {
+	// Calculate visible area for file list
+	visibleHeight := m.height - 10 // Account for header/footer
+	if visibleHeight < 1 {
+		visibleHeight = 1
+	}
+
+	// Adjust offset if selected is above visible area
+	if m.selectedIndex < m.listOffset {
+		m.listOffset = m.selectedIndex
+	}
+
+	// Adjust offset if selected is below visible area
+	if m.selectedIndex >= m.listOffset+visibleHeight {
+		m.listOffset = m.selectedIndex - visibleHeight + 1
+	}
 }
 
 // animTick returns a command that sends animation tick messages
@@ -240,36 +299,50 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.currentView == ViewFileList {
 				if m.selectedIndex > 0 {
 					m.selectedIndex--
+					m.ensureSelectedVisible()
 				}
 			}
 
 		case "down", "j":
 			if m.currentView == ViewFileList {
-				if m.selectedIndex < len(m.orgFiles)-1 {
+				if m.selectedIndex < len(m.flatList)-1 {
 					m.selectedIndex++
+					m.ensureSelectedVisible()
 				}
 			}
 
 		case "home", "g":
 			if m.currentView == ViewFileList {
 				m.selectedIndex = 0
+				m.listOffset = 0
 			} else {
 				m.viewport.GotoTop()
 			}
 
 		case "end", "G":
 			if m.currentView == ViewFileList {
-				m.selectedIndex = len(m.orgFiles) - 1
+				m.selectedIndex = len(m.flatList) - 1
+				m.ensureSelectedVisible()
 			} else {
 				m.viewport.GotoBottom()
 			}
 
 		case "enter", "l", "right":
-			if m.currentView == ViewFileList && len(m.orgFiles) > 0 {
-				m.currentDoc = m.orgFiles[m.selectedIndex]
-				m.currentView = ViewDocument
-				m.viewport.SetContent(m.renderDocument(m.currentDoc))
-				m.viewport.GotoTop()
+			if m.currentView == ViewFileList && len(m.flatList) > 0 {
+				entry := m.flatList[m.selectedIndex]
+				if entry.IsDir {
+					// Toggle directory expansion
+					entry.Expanded = !entry.Expanded
+					m.refreshFlatList()
+				} else {
+					// Open org file
+					if orgFile, err := entry.GetOrgFile(); err == nil {
+						m.currentDoc = orgFile
+						m.currentView = ViewDocument
+						m.viewport.SetContent(m.renderDocument(m.currentDoc))
+						m.viewport.GotoTop()
+					}
+				}
 			}
 
 		case "h", "left":
@@ -277,6 +350,32 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.currentView = ViewFileList
 				m.currentDoc = nil
 				m.rawView = false
+			} else if m.currentView == ViewFileList && len(m.flatList) > 0 {
+				entry := m.flatList[m.selectedIndex]
+				if entry.IsDir && entry.Expanded {
+					// Collapse current directory
+					entry.Expanded = false
+					m.refreshFlatList()
+				} else if entry.Parent != nil {
+					// Move to parent directory
+					for i, e := range m.flatList {
+						if e == entry.Parent {
+							m.selectedIndex = i
+							m.ensureSelectedVisible()
+							break
+						}
+					}
+				}
+			}
+
+		case " ":
+			// Space toggles directory expansion without entering
+			if m.currentView == ViewFileList && len(m.flatList) > 0 {
+				entry := m.flatList[m.selectedIndex]
+				if entry.IsDir {
+					entry.Expanded = !entry.Expanded
+					m.refreshFlatList()
+				}
 			}
 
 		case "r":
@@ -652,53 +751,119 @@ func (m Model) renderFileList() string {
 		b.WriteString("\n\n")
 	}
 
-	// File list
-	if len(m.orgFiles) == 0 {
+	// File tree
+	if len(m.flatList) == 0 {
 		emptyMsg := m.styles.Paragraph.Render("No .org files found in the directory.")
 		b.WriteString(emptyMsg)
 	} else {
-		// Calculate list area
+		// Calculate visible area
+		visibleHeight := m.height - 12 // Account for header/footer
+		if visibleHeight < 1 {
+			visibleHeight = 10
+		}
+
+		// Calculate visible range
+		startIdx := m.listOffset
+		endIdx := m.listOffset + visibleHeight
+		if endIdx > len(m.flatList) {
+			endIdx = len(m.flatList)
+		}
+
 		listWidth := m.width - 8
 
-		for i, f := range m.orgFiles {
-			title := f.Title()
-			author := f.Author()
-			date := f.Date()
+		for i := startIdx; i < endIdx; i++ {
+			entry := m.flatList[i]
+			depth := entry.GetDepth()
 
-			// Build metadata line
-			var meta strings.Builder
-			if author != "" {
-				meta.WriteString(author)
-			}
-			if date != "" {
-				if meta.Len() > 0 {
-					meta.WriteString(" • ")
-				}
-				meta.WriteString(date)
-			}
+			// Build tree prefix (ranger-style)
+			indent := strings.Repeat("  ", depth)
 
-			// Render file item
-			var line string
-			if i == m.selectedIndex {
-				// Selected item with arrow indicator
-				indicator := "▸ "
-				titleStyled := m.styles.FileItemActive.Width(listWidth - 2).Render(indicator + title)
-				line = titleStyled
-				if meta.Len() > 0 {
-					line += "\n  " + m.styles.FileMeta.Render(meta.String())
+			// Icon based on type
+			var icon string
+			if entry.IsDir {
+				if entry.Expanded {
+					icon = "📂"
+				} else {
+					icon = "📁"
 				}
 			} else {
-				titleStyled := m.styles.FileItem.Render(title)
-				line = titleStyled
+				icon = "📄"
+			}
+
+			// Get display name (title for org files, name for dirs)
+			displayName := entry.Name
+			if !entry.IsDir {
+				if orgFile, err := entry.GetOrgFile(); err == nil {
+					if title := orgFile.Title(); title != "" && title != strings.TrimSuffix(entry.Name, ".org") {
+						displayName = title
+					}
+				}
+			}
+
+			// Build the line
+			isSelected := i == m.selectedIndex
+			var line string
+
+			if isSelected {
+				// Selected item with arrow indicator
+				prefix := indent + "▸ " + icon + " "
+				remaining := listWidth - len([]rune(stripANSI(prefix)))
+				if remaining < 10 {
+					remaining = 10
+				}
+				// Truncate if needed
+				displayRunes := []rune(displayName)
+				if len(displayRunes) > remaining {
+					displayName = string(displayRunes[:remaining-1]) + "…"
+				}
+				line = m.styles.FileItemActive.Render(prefix + displayName)
+
+				// Show metadata for selected file
+				if !entry.IsDir {
+					if orgFile, err := entry.GetOrgFile(); err == nil {
+						var meta strings.Builder
+						if author := orgFile.Author(); author != "" {
+							meta.WriteString(author)
+						}
+						if date := orgFile.Date(); date != "" {
+							if meta.Len() > 0 {
+								meta.WriteString(" • ")
+							}
+							meta.WriteString(date)
+						}
+						if meta.Len() > 0 {
+							line += "\n" + indent + "    " + m.styles.FileMeta.Render(meta.String())
+						}
+					}
+				}
+			} else {
+				prefix := indent + "  " + icon + " "
+				remaining := listWidth - len([]rune(stripANSI(prefix)))
+				if remaining < 10 {
+					remaining = 10
+				}
+				// Truncate if needed
+				displayRunes := []rune(displayName)
+				if len(displayRunes) > remaining {
+					displayName = string(displayRunes[:remaining-1]) + "…"
+				}
+				if entry.IsDir {
+					line = m.styles.FileDir.Render(prefix + displayName)
+				} else {
+					line = m.styles.FileItem.Render(prefix + displayName)
+				}
 			}
 
 			b.WriteString(line)
 			b.WriteString("\n")
+		}
 
-			// Add spacing between items
-			if i < len(m.orgFiles)-1 {
-				b.WriteString("\n")
-			}
+		// Show scroll indicators if needed
+		if m.listOffset > 0 {
+			b.WriteString(m.styles.HelpText.Render("  ↑ more above\n"))
+		}
+		if endIdx < len(m.flatList) {
+			b.WriteString(m.styles.HelpText.Render("  ↓ more below\n"))
 		}
 	}
 
@@ -706,6 +871,8 @@ func (m Model) renderFileList() string {
 	b.WriteString("\n")
 	help := m.renderHelpBar([]helpItem{
 		{"↑/↓", "navigate"},
+		{"→/space", "expand"},
+		{"←", "collapse"},
 		{"enter", "open"},
 		{"c", "credits"},
 		{"?", "help"},

@@ -5,11 +5,11 @@
 
 ** Org-Charm Enhancements
 
-- [ ] Add syntax highlighting for code blocks
-- [ ] Support for org-mode TODO states
-- [ ] Add search functionality
+- [X] Add syntax highlighting for code blocks
+- [X] Support for org-mode TODO states
 - [X] Basic file browser
 - [X] Document viewer with scrolling
+- [ ] Convert all neovim users to emacs users
 
 ** Future Features
 

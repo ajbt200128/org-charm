@@ -48,15 +48,24 @@ func main() {
 		}
 	}
 
-	// List org files
-	files, err := org.ListOrgFiles(*orgDir)
+	// Build file tree (recursive)
+	tree, err := org.BuildFileTree(*orgDir)
 	if err != nil {
-		log.Fatal("Failed to list org files", "error", err)
+		log.Fatal("Failed to build file tree", "error", err)
 	}
-	log.Info("Found org files", "count", len(files))
+
+	// Count total org files
+	flatList := org.FlattenTree(tree)
+	fileCount := 0
+	for _, e := range flatList {
+		if !e.IsDir {
+			fileCount++
+		}
+	}
+	log.Info("Found org files", "count", fileCount)
 
 	// Create the bubbletea handler
-	teaHandler := makeTeaHandler(files)
+	teaHandler := makeTeaHandler(*orgDir)
 
 	// Create SSH server with wish
 	srv, err := wish.NewServer(
@@ -108,7 +117,7 @@ func main() {
 }
 
 // makeTeaHandler creates a bubbletea handler function for wish
-func makeTeaHandler(files []string) bubbletea.Handler {
+func makeTeaHandler(orgDir string) bubbletea.Handler {
 	return func(sess ssh.Session) (tea.Model, []tea.ProgramOption) {
 		// Get the renderer for this SSH session and force TrueColor
 		renderer := bubbletea.MakeRenderer(sess)
@@ -125,7 +134,7 @@ func makeTeaHandler(files []string) bubbletea.Handler {
 		)
 
 		// Create the model with session-specific renderer
-		model := ui.NewModel(renderer, files, changelog)
+		model := ui.NewModel(renderer, orgDir, changelog)
 
 		return model, []tea.ProgramOption{
 			tea.WithAltScreen(),
