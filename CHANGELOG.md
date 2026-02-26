@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-02-26
+
 ### Added
 - Spring-based transition animations using `charmbracelet/harmonica`
   - Wave ripple animation on initial SSH connection (blue radial wave reveals content)
@@ -32,3 +34,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Wish SSH server with per-session renderers
 - go-org parser for org-mode AST
 - Lipgloss for terminal styling
+
+[0.2.0]: https://github.com/ajbt200128/org-charm/releases/tag/v0.2.0
