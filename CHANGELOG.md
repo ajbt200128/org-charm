@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Nested footnote support with distinct symbols and indentation per level
+  - Level 0: [1], [2], [3] (yellow)
+  - Level 1: a., b., c. (cyan)
+  - Level 2: i., ii., iii. (magenta)
+  - Level 3: α, β, γ (orange)
+
 ## [0.2.0] - 2026-02-26
 
 ### Added

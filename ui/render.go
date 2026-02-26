@@ -15,8 +15,43 @@ import (
 
 // Renderer handles rendering org document nodes to styled strings
 type Renderer struct {
-	styles *Styles
-	width  int
+	styles        *Styles
+	width         int
+	footnoteDepth int // Track nesting depth for nested footnotes
+}
+
+// Footnote symbol sets for different nesting levels
+var footnoteSymbols = [][]string{
+	{"1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20"},
+	{"a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t"},
+	{"i", "ii", "iii", "iv", "v", "vi", "vii", "viii", "ix", "x", "xi", "xii", "xiii", "xiv", "xv", "xvi", "xvii", "xviii", "xix", "xx"},
+	{"α", "β", "γ", "δ", "ε", "ζ", "η", "θ", "ι", "κ", "λ", "μ", "ν", "ξ", "ο", "π", "ρ", "σ", "τ", "υ"},
+}
+
+// getFootnoteSymbol returns the appropriate symbol for a footnote at the given depth
+func getFootnoteSymbol(name string, depth int) string {
+	// Clamp depth to available symbol sets
+	if depth >= len(footnoteSymbols) {
+		depth = len(footnoteSymbols) - 1
+	}
+
+	// Try to parse name as a number for numeric footnotes
+	var idx int
+	if _, err := fmt.Sscanf(name, "%d", &idx); err == nil && idx > 0 && idx <= len(footnoteSymbols[depth]) {
+		return footnoteSymbols[depth][idx-1]
+	}
+
+	// For named footnotes, return the name with depth-appropriate formatting
+	switch depth {
+	case 0:
+		return name
+	case 1:
+		return strings.ToLower(name)
+	case 2:
+		return strings.ToLower(name)
+	default:
+		return name
+	}
 }
 
 // NewRenderer creates a new Renderer
@@ -485,10 +520,47 @@ func (r *Renderer) renderExample(ex goorg.Example) string {
 }
 
 func (r *Renderer) renderFootnoteDefinition(fn goorg.FootnoteDefinition) string {
+	return r.renderFootnoteDefinitionWithDepth(fn, r.footnoteDepth)
+}
+
+// renderFootnoteDefinitionWithDepth renders a footnote with specific nesting depth
+func (r *Renderer) renderFootnoteDefinitionWithDepth(fn goorg.FootnoteDefinition, depth int) string {
+	// Save current depth and set new depth for nested content
+	oldDepth := r.footnoteDepth
+	r.footnoteDepth = depth + 1
 	content := r.renderInlineNodes(fn.Children)
-	// Render footnote with a nice box
-	label := r.styles.FootnoteLabel.Render("[" + fn.Name + "]")
-	return label + " " + r.styles.FootnoteContent.Render(content)
+	r.footnoteDepth = oldDepth
+
+	// Get appropriate symbol for this depth
+	symbol := getFootnoteSymbol(fn.Name, depth)
+
+	// Format label based on depth
+	var label string
+	switch depth {
+	case 0:
+		label = r.styles.FootnoteLabel.Render("[" + symbol + "]")
+	case 1:
+		label = r.styles.FootnoteNestedLabel1.Render(symbol + ".")
+	case 2:
+		label = r.styles.FootnoteNestedLabel2.Render(symbol + ")")
+	default:
+		label = r.styles.FootnoteNestedLabel3.Render("(" + symbol + ")")
+	}
+
+	// Add indentation based on depth
+	indent := strings.Repeat("   ", depth)
+
+	return indent + label + " " + r.styles.FootnoteContent.Render(content)
+}
+
+// SetFootnoteDepth allows external callers to set the footnote nesting depth
+func (r *Renderer) SetFootnoteDepth(depth int) {
+	r.footnoteDepth = depth
+}
+
+// GetFootnoteDepth returns the current footnote nesting depth
+func (r *Renderer) GetFootnoteDepth() int {
+	return r.footnoteDepth
 }
 
 // renderInlineNodes renders inline content (text, emphasis, links, etc.)
@@ -687,7 +759,20 @@ func (r *Renderer) renderTimestamp(ts goorg.Timestamp) string {
 }
 
 func (r *Renderer) renderFootnoteLink(fn goorg.FootnoteLink) string {
-	return r.styles.FootnoteRef.Render("[" + fn.Name + "]")
+	// Get appropriate symbol for current depth
+	symbol := getFootnoteSymbol(fn.Name, r.footnoteDepth)
+
+	// Format reference based on depth
+	switch r.footnoteDepth {
+	case 0:
+		return r.styles.FootnoteRef.Render("[" + symbol + "]")
+	case 1:
+		return r.styles.FootnoteNestedRef1.Render("[" + symbol + "]")
+	case 2:
+		return r.styles.FootnoteNestedRef2.Render("[" + symbol + "]")
+	default:
+		return r.styles.FootnoteNestedRef3.Render("[" + symbol + "]")
+	}
 }
 
 // extractBlockText extracts plain text from block children

@@ -79,11 +79,17 @@ type Styles struct {
 	DrawerHeader    lipgloss.Style
 	Property        lipgloss.Style
 	Timestamp       lipgloss.Style
-	Footnote        lipgloss.Style
-	FootnoteLabel   lipgloss.Style
-	FootnoteContent lipgloss.Style
-	FootnoteRef     lipgloss.Style
-	Statistics      lipgloss.Style
+	Footnote           lipgloss.Style
+	FootnoteLabel      lipgloss.Style
+	FootnoteContent    lipgloss.Style
+	FootnoteRef        lipgloss.Style
+	FootnoteNestedLabel1 lipgloss.Style // a., b., c.
+	FootnoteNestedLabel2 lipgloss.Style // i., ii., iii.
+	FootnoteNestedLabel3 lipgloss.Style // α, β, γ
+	FootnoteNestedRef1   lipgloss.Style
+	FootnoteNestedRef2   lipgloss.Style
+	FootnoteNestedRef3   lipgloss.Style
+	Statistics         lipgloss.Style
 
 	// Planning keywords
 	Scheduled lipgloss.Style
@@ -411,6 +417,39 @@ func NewStyles(r *lipgloss.Renderer) *Styles {
 
 	s.FootnoteRef = r.NewStyle().
 		Foreground(colorYellow).
+		Bold(true)
+
+	// Nested footnote styles (level 1: a., b., c.)
+	s.FootnoteNestedLabel1 = r.NewStyle().
+		Bold(true).
+		Foreground(colorCyan).
+		Background(lipgloss.Color("#24283b")).
+		Padding(0, 1)
+
+	s.FootnoteNestedRef1 = r.NewStyle().
+		Foreground(colorCyan).
+		Bold(true)
+
+	// Nested footnote styles (level 2: i., ii., iii.)
+	s.FootnoteNestedLabel2 = r.NewStyle().
+		Bold(true).
+		Foreground(colorMagenta).
+		Background(lipgloss.Color("#24283b")).
+		Padding(0, 1)
+
+	s.FootnoteNestedRef2 = r.NewStyle().
+		Foreground(colorMagenta).
+		Bold(true)
+
+	// Nested footnote styles (level 3: α, β, γ)
+	s.FootnoteNestedLabel3 = r.NewStyle().
+		Bold(true).
+		Foreground(colorOrange).
+		Background(lipgloss.Color("#24283b")).
+		Padding(0, 1)
+
+	s.FootnoteNestedRef3 = r.NewStyle().
+		Foreground(colorOrange).
 		Bold(true)
 
 	s.Statistics = r.NewStyle().
