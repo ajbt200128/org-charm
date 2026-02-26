@@ -25,6 +25,7 @@ org-charm/
 | `github.com/charmbracelet/wish` | SSH server framework |
 | `github.com/charmbracelet/bubbletea` | TUI framework (Elm architecture) |
 | `github.com/charmbracelet/lipgloss` | Terminal styling |
+| `github.com/charmbracelet/harmonica` | Spring-based animations |
 | `github.com/charmbracelet/log` | Structured logging |
 | `github.com/niklasfasching/go-org/org` | Org-mode parser |
 | `github.com/alecthomas/chroma/v2` | Syntax highlighting for code blocks |
@@ -216,6 +217,54 @@ renderer.SetColorProfile(termenv.TrueColor)
 ```
 
 Without this, all styles render as plain text with no ANSI codes.
+
+## Animations with Harmonica
+
+The TUI uses `charmbracelet/harmonica` for smooth spring-based transition animations.
+
+### Animation Types
+
+1. **Wave Ripple** (`AnimWaveRipple`) - Plays on initial SSH connection
+   - Blue radial wave expands from center of screen
+   - Content is revealed as the wave passes through each position
+   - Uses Tokyo Night blue palette for wave characters (`░▒▓`)
+
+2. **Poof** (`AnimPoof`) - Plays when toggling raw/rendered view (`r` key)
+   - Old content scatters into particles (`·∘°⋅✦✧∗⁕※`)
+   - Particles reform into new content
+   - Applied only to viewport; header/footer remain static
+
+### Animation Architecture
+
+```go
+// Animation state in Model
+animType       AnimationType  // AnimNone, AnimWaveRipple, or AnimPoof
+animSpring     harmonica.Spring
+animValue      float64        // Progress 0.0 to 1.0
+animVelocity   float64        // Spring velocity
+animTarget     float64        // Target value (1.0)
+```
+
+### Spring Parameters
+
+```go
+animFPS       = 60   // Frame rate
+animFrequency = 2.5  // Lower = slower animation
+animDamping   = 1.0  // Critically damped (no overshoot)
+```
+
+### ANSI Code Handling
+
+Animations must handle styled content with ANSI escape sequences. The `stripANSI()` helper extracts visual content for position calculations, while the wave animation tracks escape sequences separately to preserve styling in revealed areas.
+
+### Adding New Animations
+
+1. Add animation type constant to `AnimationType`
+2. Add state fields to `Model` if needed
+3. Create `apply*Animation()` method in `model.go`
+4. Trigger animation in `Update()` (set `animType`, reset `animValue`)
+5. Apply animation in `View()` or within specific render functions
+6. Animation auto-completes when `animValue > 0.95`
 
 ## Known Limitations
 

@@ -1,13 +1,18 @@
 package ui
 
 import (
+	cryptorand "crypto/rand"
 	"fmt"
+	"math"
+	"math/big"
 	"strings"
+	"time"
 
 	"org-charm/org"
 
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/harmonica"
 	"github.com/charmbracelet/lipgloss"
 )
 
@@ -18,6 +23,45 @@ const (
 	ViewFileList View = iota
 	ViewDocument
 )
+
+// Animation types
+type AnimationType int
+
+const (
+	AnimNone AnimationType = iota
+	AnimWaveRipple // Wave ripple on initial connection
+	AnimPoof       // Poof/scatter effect on view toggle
+)
+
+// Animation constants
+const (
+	animFPS       = 60
+	animFrequency = 2.5  // Lower = slower animation
+	animDamping   = 1.0  // Critically damped for smooth motion without overshoot
+)
+
+// Particle characters for poof effect
+var poofChars = []rune{'·', '∘', '°', '⋅', '✦', '✧', '∗', '⁕', '※', ' '}
+
+// animTickMsg is sent on each animation frame
+type animTickMsg time.Time
+
+// secureRandInt returns a random int in [0, max) using crypto/rand
+func secureRandInt(max int) int {
+	if max <= 0 {
+		return 0
+	}
+	n, err := cryptorand.Int(cryptorand.Reader, big.NewInt(int64(max)))
+	if err != nil {
+		return 0
+	}
+	return int(n.Int64())
+}
+
+// secureRandRune returns a random rune from the given slice
+func secureRandRune(runes []rune) rune {
+	return runes[secureRandInt(len(runes))]
+}
 
 // Model is the bubbletea model for the org file viewer
 type Model struct {
@@ -51,6 +95,16 @@ type Model struct {
 
 	// Show raw org content instead of rendered
 	rawView bool
+
+	// Animation state
+	animType        AnimationType
+	animSpring      harmonica.Spring
+	animValue       float64 // Current animation progress (0.0 to 1.0)
+	animVelocity    float64 // Current velocity for spring physics
+	animTarget      float64 // Target value
+	animFromContent string  // Content before transition (for poof)
+	animToContent   string  // Content after transition (for poof)
+	animContent     string  // Original content to reveal (for wave)
 }
 
 // NewModel creates a new Model with the given renderer and org files directory
@@ -63,6 +117,12 @@ func NewModel(renderer *lipgloss.Renderer, files []string) Model {
 		selectedIndex: 0,
 		currentView:   ViewFileList,
 		showHelp:      false,
+		// Initialize animation - start with wave ripple
+		animType:     AnimWaveRipple,
+		animSpring:   harmonica.NewSpring(harmonica.FPS(animFPS), animFrequency, animDamping),
+		animValue:    0.0,
+		animVelocity: 0.0,
+		animTarget:   1.0,
 	}
 
 	// Parse all org files, separating index.org
@@ -79,9 +139,17 @@ func NewModel(renderer *lipgloss.Renderer, files []string) Model {
 	return m
 }
 
+// animTick returns a command that sends animation tick messages
+func animTick() tea.Cmd {
+	return tea.Tick(time.Second/animFPS, func(t time.Time) tea.Msg {
+		return animTickMsg(t)
+	})
+}
+
 // Init implements tea.Model
 func (m Model) Init() tea.Cmd {
-	return nil
+	// Start entrance animation
+	return animTick()
 }
 
 // Update implements tea.Model
@@ -90,6 +158,24 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmds []tea.Cmd
 
 	switch msg := msg.(type) {
+	case animTickMsg:
+		if m.animType != AnimNone {
+			// Update spring physics
+			m.animValue, m.animVelocity = m.animSpring.Update(m.animValue, m.animVelocity, m.animTarget)
+
+			// Check if animation is complete (must be very close to target with low velocity)
+			if m.animValue > 0.99 && abs(m.animVelocity) < 0.005 {
+				m.animValue = 1.0
+				m.animVelocity = 0.0
+				m.animType = AnimNone
+				m.animFromContent = ""
+				m.animToContent = ""
+			} else {
+				// Continue animation
+				cmds = append(cmds, animTick())
+			}
+		}
+
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
@@ -180,7 +266,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 		case "r":
-			if m.currentView == ViewDocument {
+			if m.currentView == ViewDocument && m.animType == AnimNone {
+				// Capture current content for poof animation
+				m.animFromContent = m.viewport.View()
+
+				// Toggle view mode
 				m.rawView = !m.rawView
 				if m.rawView {
 					m.viewport.SetContent(m.currentDoc.RawContent)
@@ -188,6 +278,16 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.viewport.SetContent(m.renderDocument(m.currentDoc))
 				}
 				m.viewport.GotoTop()
+
+				// Capture new content
+				m.animToContent = m.viewport.View()
+
+				// Start poof animation
+				m.animType = AnimPoof
+				m.animValue = 0.0
+				m.animVelocity = 0.0
+				m.animTarget = 1.0
+				cmds = append(cmds, animTick())
 			}
 
 		case "n", "tab":
@@ -243,7 +343,269 @@ func (m Model) View() string {
 		content = m.renderHelp()
 	}
 
+	// Apply wave animation (entrance only)
+	if m.animType == AnimWaveRipple {
+		content = m.applyWaveRipple(content)
+	}
+	// Note: Poof animation is applied within renderDocumentView
+
 	return content
+}
+
+// stripANSI removes ANSI escape sequences from a string
+func stripANSI(s string) string {
+	var result strings.Builder
+	inEscape := false
+	for _, r := range s {
+		if r == '\033' {
+			inEscape = true
+			continue
+		}
+		if inEscape {
+			if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') {
+				inEscape = false
+			}
+			continue
+		}
+		result.WriteRune(r)
+	}
+	return result.String()
+}
+
+// applyWaveRipple creates a radial wave effect that reveals content from the center
+func (m Model) applyWaveRipple(content string) string {
+	// When animation is nearly complete, return original content cleanly
+	if m.animValue > 0.95 {
+		return content
+	}
+
+	lines := strings.Split(content, "\n")
+	centerY := m.height / 2
+	centerX := m.width / 2
+
+	// Maximum distance from center to corner
+	maxDist := math.Sqrt(float64(centerX*centerX + centerY*centerY))
+
+	// Current wave radius based on animation progress
+	waveRadius := m.animValue * maxDist * 1.15
+	waveWidth := maxDist * 0.12
+
+	// Blue color codes for the wave
+	blueLight := "\033[38;2;122;162;247m"
+	blueMed := "\033[38;2;86;95;137m"
+	blueDark := "\033[38;2;59;66;97m"
+	reset := "\033[0m"
+
+	var result strings.Builder
+
+	for y, line := range lines {
+		if y > 0 {
+			result.WriteString("\n")
+		}
+
+		// Process the line, tracking visual column position
+		visualCol := 0
+		inEscape := false
+		escapeSeq := strings.Builder{}
+
+		for _, r := range line {
+			// Handle ANSI escape sequences
+			if r == '\033' {
+				inEscape = true
+				escapeSeq.Reset()
+				escapeSeq.WriteRune(r)
+				continue
+			}
+			if inEscape {
+				escapeSeq.WriteRune(r)
+				if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') {
+					inEscape = false
+					// Calculate distance for this visual position
+					dx := float64(visualCol - centerX)
+					dy := float64(y - centerY)
+					dist := math.Sqrt(dx*dx + dy*dy)
+					// Only output escape sequence if inside wave (content visible)
+					if dist < waveRadius-waveWidth {
+						result.WriteString(escapeSeq.String())
+					}
+				}
+				continue
+			}
+
+			// Regular character - calculate distance
+			dx := float64(visualCol - centerX)
+			dy := float64(y - centerY)
+			dist := math.Sqrt(dx*dx + dy*dy)
+
+			if dist < waveRadius-waveWidth {
+				// Inside the wave - show content (revealed)
+				result.WriteRune(r)
+			} else if dist < waveRadius {
+				// On the wave crest - show blue wave character
+				wavePos := (waveRadius - dist) / waveWidth
+				if wavePos > 0.7 {
+					result.WriteString(blueLight + "░" + reset)
+				} else if wavePos > 0.4 {
+					result.WriteString(blueMed + "▒" + reset)
+				} else {
+					result.WriteString(blueDark + "▓" + reset)
+				}
+			} else {
+				// Outside the wave - dark/hidden
+				result.WriteRune(' ')
+			}
+
+			visualCol++
+		}
+
+		// Pad to full width with wave effect
+		for visualCol < m.width {
+			dx := float64(visualCol - centerX)
+			dy := float64(y - centerY)
+			dist := math.Sqrt(dx*dx + dy*dy)
+
+			if dist < waveRadius-waveWidth {
+				result.WriteRune(' ')
+			} else if dist < waveRadius {
+				wavePos := (waveRadius - dist) / waveWidth
+				if wavePos > 0.7 {
+					result.WriteString(blueLight + "░" + reset)
+				} else if wavePos > 0.4 {
+					result.WriteString(blueMed + "▒" + reset)
+				} else {
+					result.WriteString(blueDark + "▓" + reset)
+				}
+			} else {
+				result.WriteRune(' ')
+			}
+			visualCol++
+		}
+	}
+
+	return result.String()
+}
+
+// applyPoofToViewport applies poof animation to viewport content, transitioning from old to new
+func (m Model) applyPoofToViewport(fromContent, toContent string) string {
+	// When animation is nearly complete, return the target content cleanly
+	if m.animValue > 0.95 {
+		return toContent
+	}
+
+	fromLines := strings.Split(fromContent, "\n")
+	toLines := strings.Split(toContent, "\n")
+
+	// Strip ANSI for visual calculations
+	fromClean := make([]string, len(fromLines))
+	toClean := make([]string, len(toLines))
+	for i, l := range fromLines {
+		fromClean[i] = stripANSI(l)
+	}
+	for i, l := range toLines {
+		toClean[i] = stripANSI(l)
+	}
+
+	// Ensure both have the same number of lines
+	maxLines := len(fromLines)
+	if len(toLines) > maxLines {
+		maxLines = len(toLines)
+	}
+
+	centerX := m.width / 2
+	centerY := maxLines / 2
+	maxDist := math.Sqrt(float64(centerX*centerX + centerY*centerY))
+	if maxDist < 1 {
+		maxDist = 1
+	}
+
+	var result strings.Builder
+
+	for y := 0; y < maxLines; y++ {
+		if y > 0 {
+			result.WriteString("\n")
+		}
+
+		// Get the source lines (or empty if beyond range)
+		var fromLineClean, toLineClean string
+		if y < len(fromClean) {
+			fromLineClean = fromClean[y]
+		}
+		if y < len(toClean) {
+			toLineClean = toClean[y]
+		}
+
+		// Determine max visual width
+		maxCols := len([]rune(fromLineClean))
+		if len([]rune(toLineClean)) > maxCols {
+			maxCols = len([]rune(toLineClean))
+		}
+		if maxCols < m.width {
+			maxCols = m.width
+		}
+
+		fromRunes := []rune(fromLineClean)
+		toRunes := []rune(toLineClean)
+
+		for x := 0; x < maxCols; x++ {
+			// Get characters at this position
+			var fromR, toR rune = ' ', ' '
+			if x < len(fromRunes) {
+				fromR = fromRunes[x]
+			}
+			if x < len(toRunes) {
+				toR = toRunes[x]
+			}
+
+			// Position-based phase offset for organic ripple effect
+			dx := float64(x - centerX)
+			dy := float64(y - centerY)
+			dist := math.Sqrt(dx*dx + dy*dy)
+			distFactor := dist / maxDist * 0.2
+
+			localAnim := m.animValue - distFactor
+			if localAnim < 0 {
+				localAnim = 0
+			} else if localAnim > 1 {
+				localAnim = 1
+			}
+
+			// Three phases: show old -> scatter -> show new
+			if localAnim < 0.3 {
+				// Phase 1: Show old content, starting to scatter
+				scatterChance := localAnim / 0.3
+				if secureRandInt(100) < int(scatterChance*70) {
+					result.WriteRune(secureRandRune(poofChars))
+				} else {
+					result.WriteRune(fromR)
+				}
+			} else if localAnim < 0.7 {
+				// Phase 2: Maximum scatter - particles
+				if secureRandInt(100) < 75 {
+					result.WriteRune(secureRandRune(poofChars))
+				} else {
+					result.WriteRune(' ')
+				}
+			} else {
+				// Phase 3: Reform into new content
+				reformProgress := (localAnim - 0.7) / 0.3
+				if secureRandInt(100) < int(reformProgress*100) {
+					result.WriteRune(toR)
+				} else {
+					result.WriteRune(secureRandRune(poofChars))
+				}
+			}
+		}
+	}
+
+	return result.String()
+}
+
+// abs returns the absolute value of a float64
+func abs(x float64) float64 {
+	if x < 0 {
+		return -x
+	}
+	return x
 }
 
 func (m Model) renderFileList() string {
@@ -357,8 +719,12 @@ func (m Model) renderDocumentView() string {
 	b.WriteString(header)
 	b.WriteString("\n")
 
-	// Viewport content
-	b.WriteString(m.viewport.View())
+	// Viewport content - apply poof animation if active
+	viewportContent := m.viewport.View()
+	if m.animType == AnimPoof {
+		viewportContent = m.applyPoofToViewport(m.animFromContent, m.animToContent)
+	}
+	b.WriteString(viewportContent)
 	b.WriteString("\n")
 
 	// Footer with scroll info and help
